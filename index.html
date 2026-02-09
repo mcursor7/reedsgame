@@ -1,0 +1,1585 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flappy Realms: High Fantasy</title>
+  <style>
+    :root{
+      --ink:#f2e9d8;
+      --muted:#cbbfa9;
+      --gold:#e7c26a;
+      --deep:#0c0f1a;
+      --panel: rgba(18,18,26,.72);
+      --stroke: rgba(255,255,255,.12);
+      --shadow: rgba(0,0,0,.45);
+      --accent:#86d0c9;
+      --danger:#ff6b7a;
+    }
+    html,body{
+      height:100%; margin:0;
+      background: radial-gradient(1200px 800px at 40% 25%, #2b2f46 0%, #101322 55%, #070912 100%);
+      color:var(--ink);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .wrap{height:100%; display:grid; place-items:center; padding:16px;}
+    .card{
+      width:min(960px, 96vw);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      box-shadow: 0 18px 60px var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    header{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(6px);
+    }
+    header .title{display:flex; align-items:center; gap:10px; letter-spacing:.4px;}
+    .badge{
+      font-size:12px; color:#1a1408;
+      background: linear-gradient(90deg, #e7c26a, #f1e0b5);
+      padding:4px 10px; border-radius:999px;
+      box-shadow: 0 12px 24px rgba(231,194,106,.18);
+      font-weight:800; user-select:none;
+    }
+    .hud{display:flex; gap:10px; align-items:center; font-size:13px; color:var(--muted); user-select:none; flex-wrap:wrap; justify-content:flex-end;}
+    .pill{
+      padding:6px 10px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background: rgba(8,10,18,.35);
+    }
+    .pill b{color:var(--ink);}
+
+    canvas{display:block; width:100%; aspect-ratio: 16/9; background: transparent; touch-action:none;}
+
+    .overlay{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;}
+    .panel{
+      width:min(640px, 92%);
+      background: var(--panel);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.55);
+      pointer-events:auto;
+    }
+    .panel h1{margin:0 0 8px; font-size: 22px; letter-spacing:.2px;}
+    .panel p{margin:0 0 14px; color: var(--muted); line-height: 1.35; font-size: 14px;}
+
+    .choices{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap:10px;
+      margin: 10px 0 14px;
+    }
+    .choice{
+      padding:10px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      user-select:none;
+      position:relative;
+      overflow:hidden;
+    }
+    .choice:before{
+      content:"";
+      position:absolute; inset:-40px;
+      background: radial-gradient(220px 160px at 30% 20%, rgba(231,194,106,.16), rgba(0,0,0,0));
+      transform: rotate(10deg);
+      pointer-events:none;
+    }
+    .choice:hover{ transform: translateY(-2px); border-color: rgba(231,194,106,.55); background: rgba(231,194,106,.06); }
+    .choice.active{ border-color: rgba(134,208,201,.70); background: rgba(134,208,201,.08); }
+    .choice .name{ font-weight: 900; font-size: 14px; margin:6px 0 2px; letter-spacing:.2px; }
+    .choice .desc{ color: var(--muted); font-size: 12px; line-height:1.25; }
+    .choice .tag{
+      display:inline-block;
+      margin-top:6px;
+      font-size:11px;
+      color:#20180a;
+      background: linear-gradient(90deg, rgba(231,194,106,.95), rgba(241,224,181,.95));
+      padding:3px 8px;
+      border-radius:999px;
+      font-weight:900;
+    }
+
+    .btnrow{display:flex; gap:10px; flex-wrap:wrap;}
+    button{
+      border:0;
+      background: linear-gradient(90deg, #e7c26a, #f1e0b5);
+      color:#1a1408;
+      font-weight: 900;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor:pointer;
+      box-shadow: 0 18px 40px rgba(231,194,106,.20);
+    }
+    button.secondary{
+      background: rgba(255,255,255,.06);
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow:none;
+    }
+    .tiny{margin-top:10px; font-size:12px; color: rgba(242,233,216,.80);}
+    .tiny kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:11px; padding:2px 6px; border-radius: 7px;
+      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.20);
+    }
+    footer{
+      padding: 10px 14px;
+      border-top:1px solid rgba(255,255,255,.10);
+      color: rgba(242,233,216,.60);
+      font-size:12px;
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <div class="title">
+        <div class="badge">Flappy Realms</div>
+        <div style="font-weight:900; letter-spacing:.2px;">High Fantasy Edition</div>
+      </div>
+      <div class="hud">
+        <div class="pill">Score: <b id="score">0</b></div>
+        <div class="pill">Best: <b id="best">0</b></div>
+        <div class="pill">Hero: <b id="heroName">—</b></div>
+        <div class="pill">Realm: <b id="realmName">—</b></div>
+      </div>
+    </header>
+
+    <canvas id="game"></canvas>
+
+    <div class="overlay" id="overlay">
+      <div class="panel">
+        <h1 id="panelTitle">Choose your champion</h1>
+        <p id="panelText">Pick a hero, then <b>Start</b>. The realm won’t begin moving until your first <b>Space / click / tap</b>. Hold to <b>glide</b>.</p>
+
+        <div class="choices" id="choices"></div>
+
+        <div class="btnrow">
+          <button id="startBtn">Start</button>
+          <button class="secondary" id="howBtn">How to play</button>
+          <button class="secondary" id="muteBtn">Sound: On</button>
+        </div>
+
+        <div class="tiny">
+          Hop: <kbd>Space</kbd> / <kbd>Click</kbd> / <kbd>Tap</kbd> • Glide: <kbd>Hold</kbd> • Pause: <kbd>P</kbd> • Restart: <kbd>R</kbd>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Realms shift as you score • Dragon Rider is fast but steady</div>
+      <div>All art is procedural: ink, parchment, silhouette fantasy</div>
+    </footer>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const scoreEl = document.getElementById("score");
+  const bestEl  = document.getElementById("best");
+  const heroNameEl = document.getElementById("heroName");
+  const realmNameEl = document.getElementById("realmName");
+
+  const overlay = document.getElementById("overlay");
+  const panelTitle = document.getElementById("panelTitle");
+  const panelText  = document.getElementById("panelText");
+  const choicesEl  = document.getElementById("choices");
+  const startBtn   = document.getElementById("startBtn");
+  const howBtn     = document.getElementById("howBtn");
+  const muteBtn    = document.getElementById("muteBtn");
+
+  // ---- DPR-aware sizing (coordinate system = CSS pixels) ----
+  function resizeCanvasToDisplaySize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr, dpr);
+  }
+  window.addEventListener("resize", resizeCanvasToDisplaySize);
+  canvas.style.width = "100%";
+  canvas.style.height = "auto";
+  resizeCanvasToDisplaySize();
+
+  function getW(){ return canvas.getBoundingClientRect().width; }
+  function getH(){ return canvas.getBoundingClientRect().height; }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  // ---- Minimal beep (optional) ----
+  let soundOn = true;
+  const audio = (() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    const ac = new AC();
+    const play = (freq=420, dur=0.06, type="sine", vol=0.045) => {
+      if (!soundOn) return;
+      if (ac.state === "suspended") ac.resume().catch(()=>{});
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + dur);
+      g.gain.setTargetAtTime(0.0001, ac.currentTime + dur*0.35, 0.02);
+    };
+    return { play };
+  })();
+
+  // ---- Mechanics (unchanged feel) ----
+  const G = {
+    groundH: 72,
+    pillarW: 92,
+    gap: 190,
+    gapJitter: 70,
+    pillarSpeed: 155,   // px/s
+    pillarEvery: 1900,  // ms
+    coyoteMs: 110,
+  };
+
+  const input = { holding:false };
+
+  // ---- Heroes (fantasy reskins + Dragon Rider) ----
+  const HEROES = [
+    {
+      id:"hound",
+      name:"Enchanted Hound",
+      desc:"A loyal wardog with a rune-collar.",
+      tag:"Guardian",
+      physics:{ gravity:920, flapVel:-360, maxFall:520, glideGravityMul:0.52, glideFallMul:0.70 },
+      draw: drawHound
+    },
+    {
+      id:"familiar",
+      name:"Arcane Familiar",
+      desc:"A cat in a tiny cloak—quiet magic.",
+      tag:"Mage",
+      physics:{ gravity:880, flapVel:-345, maxFall:500, glideGravityMul:0.50, glideFallMul:0.68 },
+      draw: drawFamiliar
+    },
+    {
+      id:"spiritdove",
+      name:"Spirit Dove",
+      desc:"Blessed wings—gentlest glide.",
+      tag:"Cleric",
+      physics:{ gravity:820, flapVel:-330, maxFall:470, glideGravityMul:0.42, glideFallMul:0.62 },
+      draw: drawSpiritDove
+    },
+    {
+      id:"dragonrider",
+      name:"Dragon Rider",
+      desc:"A young drake and rider—steady, swift.",
+      tag:"Ranger",
+      // slightly faster “forward feel” visually; mechanics same but a touch heavier + strong control
+      physics:{ gravity:900, flapVel:-350, maxFall:510, glideGravityMul:0.48, glideFallMul:0.66 },
+      draw: drawDragonRider
+    }
+  ];
+  let selectedHero = HEROES[0];
+
+  // ---- Realms / scenes (auto-rotate) ----
+  const REALMS = [
+    { id:"moonkeep", name:"Moonlit Keep", draw: drawRealmMoonKeep },
+    { id:"elderwood", name:"Elderwood Ruins", draw: drawRealmElderwood },
+    { id:"frostpeak", name:"Frostpeak Pass", draw: drawRealmFrostpeak },
+    { id:"emberrift", name:"Ember Rift", draw: drawRealmEmberRift },
+  ];
+
+  // ---- State ----
+  const S = {
+    mode: "menu",  // menu | ready | play | pause | over
+    last: 0,
+    score: 0,
+    best: Number(localStorage.getItem("flappy_realms_best") || 0),
+    pillars: [],
+    nextPillarAt: 0,
+    shake: 0,
+    worldX: 0,
+
+    realmIdx: 0,
+    nextRealmIdx: 1,
+    realmBlend: 0,      // 0..1 when transitioning
+    realmBlendVel: 0,
+  };
+  bestEl.textContent = S.best;
+
+  const P = {
+    x: 180,
+    y: 240,
+    r: 18,
+    vy: 0,
+    rot: 0,
+    alive: true,
+    coyoteUntil: 0
+  };
+
+  function setRealm(idx){
+    S.realmIdx = ((idx % REALMS.length) + REALMS.length) % REALMS.length;
+    S.nextRealmIdx = (S.realmIdx + 1) % REALMS.length;
+    S.realmBlend = 0;
+    S.realmBlendVel = 0;
+    realmNameEl.textContent = REALMS[S.realmIdx].name;
+  }
+
+  function queueNextRealm(){
+    const next = (S.realmIdx + 1) % REALMS.length;
+    S.nextRealmIdx = next;
+    S.realmBlendVel = 0.9; // transition speed
+  }
+
+  // Rotate realms every N points
+  const REALM_SHIFT_EVERY = 6;
+
+  // ---- UI: character choices ----
+  const choiceCards = [];
+  HEROES.forEach((h, idx) => {
+    const div = document.createElement("div");
+    div.className = "choice" + (idx===0 ? " active" : "");
+    div.innerHTML = `
+      <svg viewBox="0 0 120 70" width="100%" height="44" style="display:block; position:relative; z-index:1;">
+        <rect x="2" y="2" width="116" height="66" rx="14" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.12)"/>
+        <g transform="translate(60,36) scale(0.95)"></g>
+      </svg>
+      <div class="name" style="position:relative; z-index:1;">${h.name}</div>
+      <div class="desc" style="position:relative; z-index:1;">${h.desc}</div>
+      <div class="tag" style="position:relative; z-index:1;">${h.tag}</div>
+    `;
+    div.addEventListener("click", () => setHero(h.id));
+    choicesEl.appendChild(div);
+    choiceCards.push(div);
+  });
+
+  function setHero(id){
+    selectedHero = HEROES.find(h => h.id === id) || HEROES[0];
+    choiceCards.forEach(c => c.classList.remove("active"));
+    const i = HEROES.findIndex(h => h.id === id);
+    if (i >= 0) choiceCards[i].classList.add("active");
+    heroNameEl.textContent = selectedHero.name;
+  }
+
+  function injectHeroPreviews(){
+    const svgs = choicesEl.querySelectorAll("svg");
+    svgs.forEach((svg, i) => {
+      const g = svg.querySelector("g");
+      while (g.firstChild) g.removeChild(g.firstChild);
+
+      const mk = (tag, attrs) => {
+        const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+        return el;
+      };
+
+      // parchment medallion
+      g.appendChild(mk("path", {
+        d:"M0,-16 C10,-16 16,-10 16,0 C16,10 10,16 0,16 C-10,16 -16,10 -16,0 C-16,-10 -10,-16 0,-16 Z",
+        fill:"rgba(231,194,106,.14)",
+        stroke:"rgba(231,194,106,.85)",
+        "stroke-width":"2.2",
+        "stroke-linejoin":"round"
+      }));
+
+      // icon per hero
+      const id = HEROES[i].id;
+      if (id==="hound"){
+        g.appendChild(mk("path",{ d:"M-10,6 C-12,2 -11,-8 -2,-8 C2,-14 12,-10 10,-2 C13,2 8,10 2,9 C-2,12 -8,11 -10,6 Z",
+          fill:"rgba(134,208,201,.16)", stroke:"rgba(134,208,201,.90)", "stroke-width":"2.2", "stroke-linecap":"round", "stroke-linejoin":"round"}));
+        g.appendChild(mk("circle",{cx:"-2", cy:"-2", r:"1.6", fill:"rgba(242,233,216,.9)"}));
+        g.appendChild(mk("circle",{cx:"5", cy:"-2", r:"1.6", fill:"rgba(242,233,216,.9)"}));
+      } else if (id==="familiar"){
+        g.appendChild(mk("path",{ d:"M-12,4 C-12,-6 -6,-14 0,-10 C6,-14 12,-6 12,4 C12,12 4,14 0,10 C-4,14 -12,12 -12,4 Z",
+          fill:"rgba(231,194,106,.16)", stroke:"rgba(231,194,106,.95)", "stroke-width":"2.2", "stroke-linejoin":"round"}));
+        g.appendChild(mk("path",{ d:"M-6,-8 L-11,-15 L-2,-12 Z", fill:"rgba(231,194,106,.08)", stroke:"rgba(231,194,106,.95)", "stroke-width":"2"}));
+        g.appendChild(mk("path",{ d:"M6,-8 L11,-15 L2,-12 Z", fill:"rgba(231,194,106,.08)", stroke:"rgba(231,194,106,.95)", "stroke-width":"2"}));
+      } else if (id==="spiritdove"){
+        g.appendChild(mk("path",{ d:"M-14,2 C-8,-10 8,-12 14,-2 C10,6 2,10 -2,8 C-6,12 -12,10 -14,2 Z",
+          fill:"rgba(180,210,255,.10)", stroke:"rgba(180,210,255,.90)", "stroke-width":"2.2", "stroke-linejoin":"round"}));
+        g.appendChild(mk("path",{ d:"M-2,0 C2,-2 6,-1 9,2", fill:"none", stroke:"rgba(180,210,255,.90)", "stroke-width":"2", "stroke-linecap":"round"}));
+      } else { // dragonrider
+        g.appendChild(mk("path",{ d:"M-14,2 C-10,-10 4,-12 10,-6 C14,-3 14,8 4,10 C-2,12 -10,10 -14,2 Z",
+          fill:"rgba(255,140,120,.10)", stroke:"rgba(255,140,120,.85)", "stroke-width":"2.2", "stroke-linejoin":"round"}));
+        g.appendChild(mk("path",{ d:"M-2,-2 C3,-8 10,-6 12,0 C9,2 3,2 -2,-2 Z",
+          fill:"rgba(255,140,120,.08)", stroke:"rgba(255,140,120,.85)", "stroke-width":"2"}));
+        g.appendChild(mk("circle",{cx:"3", cy:"-6", r:"1.6", fill:"rgba(242,233,216,.9)"}));
+      }
+    });
+  }
+  injectHeroPreviews();
+
+  // ---- Pillars ----
+  function spawnPillar(now){
+    const w = getW(), h = getH();
+    const topMargin = 70;
+    const bottomLimit = h - G.groundH - 70;
+
+    const mid = (topMargin + bottomLimit) / 2;
+    const center = mid + (Math.random() * 2 - 1) * G.gapJitter;
+
+    const gap = G.gap;
+    const topH = Math.max(40, center - gap/2);
+    const botY = center + gap/2;
+
+    S.pillars.push({ x: w + 40, w: G.pillarW, topH, botY, passed:false, runeSeed: Math.random()*9999 });
+    S.nextPillarAt = now + G.pillarEvery;
+  }
+
+  // ---- Overlay helpers ----
+  function showOverlay(title, text){
+    panelTitle.textContent = title;
+    panelText.innerHTML = text;
+    overlay.style.display = "grid";
+  }
+  function hideOverlay(){ overlay.style.display = "none"; }
+
+  function resetRun(){
+    S.score = 0;
+    scoreEl.textContent = "0";
+    S.pillars = [];
+    S.nextPillarAt = 0;
+    S.shake = 0;
+    S.worldX = 0;
+
+    P.x = Math.max(160, getW() * 0.18);
+    P.y = getH() * 0.45;
+    P.vy = 0;
+    P.rot = 0;
+    P.alive = true;
+    P.coyoteUntil = 0;
+
+    // new realm each run (random)
+    setRealm(Math.floor(Math.random() * REALMS.length));
+  }
+
+  function enterReady(){
+    resetRun();
+    S.mode = "ready";
+    hideOverlay();
+    if (audio) audio.play(540, 0.05, "sine", 0.04);
+  }
+
+  function beginPlayWithFlap(now){
+    S.mode = "play";
+    S.nextPillarAt = now + 1100; // delay first obstacle
+    doFlap(now);
+  }
+
+  function endGame(){
+    S.mode = "over";
+    overlay.style.display = "grid";
+    const msg = `Score: <b>${S.score}</b>. ${S.score >= S.best ? "<b>New legend!</b>" : `Best is <b>${S.best}</b>.`} Press <b>Space</b> / click / tap to return.`;
+    showOverlay("Fate decides…", msg);
+    startBtn.textContent = "Restart";
+
+    if (S.score > S.best){
+      S.best = S.score;
+      localStorage.setItem("flappy_realms_best", String(S.best));
+      bestEl.textContent = String(S.best);
+      if (audio){ audio.play(880,0.08,"triangle",0.06); audio.play(990,0.08,"triangle",0.05); }
+    } else {
+      if (audio) audio.play(220, 0.10, "sine", 0.05);
+    }
+  }
+
+  // ---- Input ----
+  function setHolding(v){ input.holding = v; }
+
+  function doFlap(now){
+    if (S.mode === "menu") return;
+    if (S.mode === "pause"){ S.mode = "play"; hideOverlay(); return; }
+    if (S.mode === "over"){ enterReady(); return; }
+    if (S.mode === "ready"){ beginPlayWithFlap(now); return; }
+    if (S.mode !== "play") return;
+
+    const canFlap = P.alive || now < P.coyoteUntil;
+    if (!canFlap) return;
+
+    P.alive = true;
+    P.vy = selectedHero.physics.flapVel;
+    if (audio) audio.play(520, 0.055, "triangle", 0.05);
+  }
+
+  function togglePause(){
+    if (S.mode !== "play" && S.mode !== "pause") return;
+    if (S.mode === "play"){
+      S.mode = "pause";
+      showOverlay("Time is stilled", "Press <b>P</b> to return. Hold to <b>glide</b> when playing.");
+      startBtn.textContent = "Restart";
+    } else {
+      S.mode = "play";
+      hideOverlay();
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space"){
+      e.preventDefault();
+      setHolding(true);
+      if (!e.repeat) doFlap(performance.now());
+    }
+    if (e.key.toLowerCase() === "p") togglePause();
+    if (e.key.toLowerCase() === "r") enterReady();
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") setHolding(false);
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    setHolding(true);
+    doFlap(performance.now());
+  });
+  window.addEventListener("pointerup", () => setHolding(false));
+  window.addEventListener("pointercancel", () => setHolding(false));
+
+  // Buttons
+  startBtn.addEventListener("click", () => { startBtn.textContent = "Restart"; enterReady(); });
+  howBtn.addEventListener("click", () => {
+    showOverlay("How to play",
+      "Press <b>Start</b> to ready your hero. The realm won’t move until your first <b>Space/click/tap</b>.<br><br>" +
+      "• Tap/Space to hop<br>• <b>Hold</b> to glide (reduced fall)<br>• <b>P</b> pause, <b>R</b> restart<br><br>" +
+      "Realms shift every few points."
+    );
+    startBtn.textContent = (S.mode === "play" || S.mode === "ready") ? "Restart" : "Start";
+  });
+  muteBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    muteBtn.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
+    if (audio && soundOn) audio.play(680, 0.04, "sine", 0.03);
+  });
+
+  // ---- Collision ----
+  function collideWithPillar(p){
+    const h = getH();
+    const px = P.x, py = P.y, r = P.r;
+    const left = p.x, right = p.x + p.w;
+
+    if (px + r < left || px - r > right) return false;
+    if (py - r < p.topH) return true;
+    if (py + r > p.botY) return true;
+    if (py + r > h - G.groundH) return true;
+    return false;
+  }
+
+  // ---- Drawing utilities ----
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    const rr = Math.min(r, w/2, h/2);
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y, x+w,y+h, rr);
+    ctx.arcTo(x+w,y+h, x,y+h, rr);
+    ctx.arcTo(x,y+h, x,y, rr);
+    ctx.arcTo(x,y, x+w,y, rr);
+    ctx.closePath();
+  }
+
+  function noiseSpeckle(w,h,alpha=0.08){
+    // quick parchment speckle
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    for (let i=0;i<160;i++){
+      const x = Math.random()*w;
+      const y = Math.random()*h;
+      const s = 0.5 + Math.random()*1.4;
+      ctx.fillStyle = Math.random()<0.5 ? "rgba(255,255,255,.9)" : "rgba(0,0,0,.8)";
+      ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- Realms (parallax silhouettes + mood lighting) ----
+  function drawBackground(now){
+    const w = getW(), h = getH();
+
+    // transition blend
+    if (S.realmBlendVel > 0){
+      S.realmBlend += S.realmBlendVel * (1/60);
+      if (S.realmBlend >= 1){
+        S.realmIdx = S.nextRealmIdx;
+        S.nextRealmIdx = (S.realmIdx + 1) % REALMS.length;
+        S.realmBlend = 0;
+        S.realmBlendVel = 0;
+        realmNameEl.textContent = REALMS[S.realmIdx].name;
+      }
+    }
+
+    // base realm
+    REALMS[S.realmIdx].draw({now,w,h,alpha:1});
+    // overlay next realm if blending
+    if (S.realmBlendVel > 0){
+      const a = clamp(S.realmBlend,0,1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      REALMS[S.nextRealmIdx].draw({now,w,h,alpha:a});
+      ctx.restore();
+    }
+
+    // ground strip (common)
+    ctx.save();
+    const gh = G.groundH;
+    const y = h - gh;
+
+    // rocky ground
+    const g2 = ctx.createLinearGradient(0,y,0,h);
+    g2.addColorStop(0, "rgba(8,9,14,0.25)");
+    g2.addColorStop(1, "rgba(4,4,8,0.92)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(0,y,w,gh);
+
+    // fog edge
+    ctx.globalAlpha = 0.35;
+    const fog = ctx.createLinearGradient(0,y-20,0,y+25);
+    fog.addColorStop(0,"rgba(255,255,255,0)");
+    fog.addColorStop(1,"rgba(255,255,255,0.10)");
+    ctx.fillStyle = fog;
+    ctx.fillRect(0,y-20,w,45);
+
+    ctx.restore();
+  }
+
+  function drawRealmMoonKeep({now,w,h}){
+    // deep night + moon + keep silhouettes
+    ctx.save();
+    const sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,"#101431");
+    sky.addColorStop(0.6,"#0c1024");
+    sky.addColorStop(1,"#070916");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,w,h);
+
+    // moon glow
+    const mx = w*0.72, my = h*0.22;
+    const mg = ctx.createRadialGradient(mx,my,10,mx,my,Math.max(w,h)*0.45);
+    mg.addColorStop(0,"rgba(255,245,220,0.22)");
+    mg.addColorStop(0.35,"rgba(231,194,106,0.10)");
+    mg.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle = mg;
+    ctx.fillRect(0,0,w,h);
+
+    // moon
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = "rgba(245,236,210,0.86)";
+    ctx.beginPath(); ctx.arc(mx,my,26,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.beginPath(); ctx.arc(mx+8,my-6,7,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx-10,my+4,5,0,Math.PI*2); ctx.fill();
+
+    // stars
+    ctx.globalAlpha = 0.35;
+    for (let i=0;i<70;i++){
+      const sx = (i*131 + now*0.02) % (w+160) - 80;
+      const sy = (i*71 + now*0.015) % (h*0.55);
+      const r = 0.8 + (i%3)*0.5;
+      ctx.fillStyle = i%4===0 ? "rgba(231,194,106,0.9)" : "rgba(242,233,216,0.9)";
+      ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fill();
+    }
+
+    // far mountains
+    const ox = - (S.worldX * 0.12) % (w+400);
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "rgba(18,20,40,0.95)";
+    silhouetteMountains(ox, h*0.64, w, h, 220, 0.18);
+
+    // keep silhouette (center-left)
+    ctx.globalAlpha = 0.62;
+    ctx.fillStyle = "rgba(10,10,18,0.95)";
+    const kx = w*0.22 - (S.worldX*0.22)% (w*0.9);
+    drawKeep(kx, h*0.50, 260, 180);
+
+    // mid hills
+    ctx.globalAlpha = 0.70;
+    ctx.fillStyle = "rgba(10,11,22,0.98)";
+    silhouetteHills(- (S.worldX*0.28) % (w+300), h*0.72, w, h, 140);
+
+    // light mist
+    ctx.globalAlpha = 0.20;
+    const mist = ctx.createLinearGradient(0,h*0.45,0,h*0.85);
+    mist.addColorStop(0,"rgba(255,255,255,0)");
+    mist.addColorStop(1,"rgba(255,255,255,0.12)");
+    ctx.fillStyle = mist;
+    ctx.fillRect(0,0,w,h);
+
+    noiseSpeckle(w,h*0.85,0.05);
+    ctx.restore();
+  }
+
+  function drawRealmElderwood({now,w,h}){
+    // green dusk + giant trees + ruins
+    ctx.save();
+    const sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,"#12221f");
+    sky.addColorStop(0.55,"#0f1916");
+    sky.addColorStop(1,"#070a0d");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,w,h);
+
+    // sunbeam haze
+    const gx = w*0.32, gy = h*0.25;
+    const g = ctx.createRadialGradient(gx,gy,10,gx,gy,Math.max(w,h)*0.55);
+    g.addColorStop(0,"rgba(134,208,201,0.18)");
+    g.addColorStop(0.45,"rgba(231,194,106,0.10)");
+    g.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+
+    // fireflies
+    ctx.globalAlpha = 0.35;
+    for (let i=0;i<48;i++){
+      const t = now*0.001 + i*1.7;
+      const x = (i*97 + (S.worldX*0.22)) % (w+200) - 100;
+      const y = h*0.18 + ((i*53)%200) + Math.sin(t)*6;
+      const r = 1.0 + (i%3)*0.5;
+      ctx.fillStyle = i%2 ? "rgba(231,194,106,0.95)" : "rgba(134,208,201,0.95)";
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+
+    // far hills
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = "rgba(10,16,14,0.95)";
+    silhouetteHills(- (S.worldX*0.12) % (w+320), h*0.62, w, h, 170);
+
+    // mid trees silhouettes (parallax)
+    ctx.globalAlpha = 0.70;
+    ctx.fillStyle = "rgba(5,10,9,0.98)";
+    drawForest(- (S.worldX*0.30) % (w+520), h*0.72, w, h, 1.0);
+
+    // ruins (arches)
+    ctx.globalAlpha = 0.60;
+    ctx.fillStyle = "rgba(8,10,12,0.95)";
+    drawRuins(w*0.68 - (S.worldX*0.25)% (w*0.8), h*0.68, 220, 110);
+
+    // low fog
+    ctx.globalAlpha = 0.22;
+    const fog = ctx.createLinearGradient(0,h*0.55,0,h*0.90);
+    fog.addColorStop(0,"rgba(255,255,255,0)");
+    fog.addColorStop(1,"rgba(255,255,255,0.14)");
+    ctx.fillStyle = fog;
+    ctx.fillRect(0,0,w,h);
+
+    noiseSpeckle(w,h*0.9,0.06);
+    ctx.restore();
+  }
+
+  function drawRealmFrostpeak({now,w,h}){
+    // cold dawn + snowy mountains + aurora
+    ctx.save();
+    const sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,"#0b1730");
+    sky.addColorStop(0.55,"#0a1020");
+    sky.addColorStop(1,"#070912");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,w,h);
+
+    // aurora ribbons
+    ctx.globalAlpha = 0.20;
+    for (let i=0;i<4;i++){
+      const t = now*0.0006 + i*1.3;
+      ctx.strokeStyle = i%2 ? "rgba(134,208,201,0.9)" : "rgba(180,210,255,0.9)";
+      ctx.lineWidth = 24 - i*4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const y0 = h*0.18 + i*18;
+      for (let x= -60; x<=w+60; x+=60){
+        const y = y0 + Math.sin((x*0.006) + t)*16 + Math.cos((x*0.003)+t*0.9)*10;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+
+    // far mountains
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "rgba(16,22,44,0.98)";
+    silhouetteMountains(- (S.worldX*0.10) % (w+500), h*0.66, w, h, 240, 0.22);
+
+    // snowy highlights
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "rgba(242,233,216,0.75)";
+    silhouetteMountains(- (S.worldX*0.10) % (w+500), h*0.66, w, h, 240, 0.05);
+
+    // mid ridges
+    ctx.globalAlpha = 0.70;
+    ctx.fillStyle = "rgba(8,10,20,0.98)";
+    silhouetteHills(- (S.worldX*0.22) % (w+360), h*0.76, w, h, 150);
+
+    // snow speckle
+    ctx.globalAlpha = 0.18;
+    for (let i=0;i<120;i++){
+      const x = (i*83 + now*0.03) % (w+160) - 80;
+      const y = (i*47 + now*0.06) % (h*0.8);
+      ctx.fillStyle = "rgba(242,233,216,0.9)";
+      ctx.beginPath(); ctx.arc(x,y, 0.6 + (i%3)*0.4, 0, Math.PI*2); ctx.fill();
+    }
+
+    noiseSpeckle(w,h*0.85,0.05);
+    ctx.restore();
+  }
+
+  function drawRealmEmberRift({now,w,h}){
+    // volcanic sky + lava glow + jagged spires
+    ctx.save();
+    const sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,"#231014");
+    sky.addColorStop(0.6,"#12070a");
+    sky.addColorStop(1,"#07060a");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,w,h);
+
+    // lava glow
+    const lx = w*0.55, ly = h*0.78;
+    const lg = ctx.createRadialGradient(lx,ly,10,lx,ly,Math.max(w,h)*0.55);
+    lg.addColorStop(0,"rgba(255,120,90,0.24)");
+    lg.addColorStop(0.35,"rgba(231,194,106,0.12)");
+    lg.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle = lg;
+    ctx.fillRect(0,0,w,h);
+
+    // ash
+    ctx.globalAlpha = 0.20;
+    for (let i=0;i<90;i++){
+      const x = (i*127 + now*0.06) % (w+240) - 120;
+      const y = (i*61  + now*0.03) % (h*0.75);
+      ctx.fillStyle = "rgba(242,233,216,0.35)";
+      ctx.beginPath(); ctx.arc(x,y, 0.6 + (i%4)*0.35, 0, Math.PI*2); ctx.fill();
+    }
+
+    // spires
+    ctx.globalAlpha = 0.70;
+    ctx.fillStyle = "rgba(6,4,6,0.98)";
+    drawSpires(- (S.worldX*0.20) % (w+520), h*0.72, w, h);
+
+    // rift fog
+    ctx.globalAlpha = 0.20;
+    const fog = ctx.createLinearGradient(0,h*0.58,0,h*0.92);
+    fog.addColorStop(0,"rgba(255,255,255,0)");
+    fog.addColorStop(1,"rgba(255,120,90,0.10)");
+    ctx.fillStyle = fog;
+    ctx.fillRect(0,0,w,h);
+
+    noiseSpeckle(w,h*0.9,0.06);
+    ctx.restore();
+  }
+
+  // ---- Realm silhouette helpers ----
+  function silhouetteMountains(xOffset, baseY, w, h, step, jag){
+    ctx.beginPath();
+    ctx.moveTo(-200 + xOffset, h);
+    ctx.lineTo(-200 + xOffset, baseY);
+    for (let x=-200; x<=w+240; x+=step){
+      const peak = baseY - (60 + Math.random()*80) * (0.7 + jag);
+      ctx.lineTo(x + xOffset + step*0.25, peak);
+      ctx.lineTo(x + xOffset + step*0.7, baseY + Math.random()*18);
+    }
+    ctx.lineTo(w+260 + xOffset, h);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function silhouetteHills(xOffset, baseY, w, h, amp){
+    ctx.beginPath();
+    ctx.moveTo(-200 + xOffset, h);
+    ctx.lineTo(-200 + xOffset, baseY);
+    for (let x=-200; x<=w+240; x+=40){
+      const y = baseY + Math.sin((x*0.01) + xOffset*0.002)*amp*0.08 + Math.cos((x*0.006))*amp*0.05;
+      ctx.lineTo(x + xOffset, y);
+    }
+    ctx.lineTo(w+260 + xOffset, h);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawKeep(x, y, w, h){
+    // simple keep silhouette with towers
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    ctx.lineTo(0, h*0.45);
+    ctx.lineTo(w*0.18, h*0.45);
+    ctx.lineTo(w*0.18, h*0.25);
+    ctx.lineTo(w*0.28, h*0.25);
+    ctx.lineTo(w*0.28, h*0.45);
+    ctx.lineTo(w*0.48, h*0.45);
+    ctx.lineTo(w*0.48, h*0.18);
+    ctx.lineTo(w*0.62, h*0.18);
+    ctx.lineTo(w*0.62, h*0.45);
+    ctx.lineTo(w*0.82, h*0.45);
+    ctx.lineTo(w*0.82, h*0.30);
+    ctx.lineTo(w*0.92, h*0.30);
+    ctx.lineTo(w*0.92, h*0.45);
+    ctx.lineTo(w, h*0.45);
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawForest(xOffset, baseY, w, h, density){
+    // repeating tree trunks & canopies
+    const start = -200;
+    const end = w + 260;
+    for (let i=0;i<Math.floor(26*density);i++){
+      const x = start + i*(end-start)/(26*density) + xOffset;
+      const trunkH = 80 + (i%7)*18;
+      const trunkW = 10 + (i%5)*2;
+      const canopyR = 26 + (i%6)*6;
+
+      // trunk
+      ctx.beginPath();
+      ctx.roundRect(x, baseY - trunkH, trunkW, trunkH, 5);
+      ctx.fill();
+
+      // canopy blob
+      ctx.beginPath();
+      ctx.arc(x+trunkW/2, baseY - trunkH, canopyR, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x+trunkW/2 - canopyR*0.6, baseY - trunkH + canopyR*0.2, canopyR*0.8, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x+trunkW/2 + canopyR*0.6, baseY - trunkH + canopyR*0.25, canopyR*0.75, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawRuins(x, y, w, h){
+    ctx.save();
+    ctx.translate(x,y);
+    // broken arch + pillars
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w*0.18, h, 10); ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(w*0.78, 0, w*0.18, h, 10); ctx.fill();
+
+    // arch
+    ctx.beginPath();
+    ctx.moveTo(w*0.10, h*0.30);
+    ctx.quadraticCurveTo(w*0.50, -h*0.25, w*0.90, h*0.30);
+    ctx.lineTo(w*0.78, h*0.38);
+    ctx.quadraticCurveTo(w*0.50, 0, w*0.22, h*0.38);
+    ctx.closePath();
+    ctx.fill();
+
+    // missing chunk
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(w*0.55, h*0.20, 26, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore();
+  }
+
+  function drawSpires(xOffset, baseY, w, h){
+    const start = -220, end = w+260;
+    for (let i=0;i<18;i++){
+      const x = start + i*(end-start)/18 + xOffset;
+      const height = 140 + (i%6)*35;
+      const bw = 40 + (i%4)*10;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.lineTo(x + bw*0.5, baseY - height);
+      ctx.lineTo(x + bw, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ---- Obstacles: rune-carved stone pillars instead of pipes ----
+  function drawPillars(){
+    const w = getW(), h = getH();
+    for (const p of S.pillars){
+      ctx.save();
+      ctx.translate(p.x, 0);
+
+      // stone gradient
+      const g = ctx.createLinearGradient(0,0,p.w,0);
+      g.addColorStop(0,"rgba(80,78,92,0.90)");
+      g.addColorStop(0.5,"rgba(58,56,70,0.92)");
+      g.addColorStop(1,"rgba(46,44,58,0.94)");
+      ctx.fillStyle = g;
+      ctx.strokeStyle = "rgba(242,233,216,0.14)";
+      ctx.lineWidth = 2;
+
+      // top pillar
+      roundRect(0, -8, p.w, p.topH + 8, 16);
+      ctx.fill(); ctx.stroke();
+
+      // bottom pillar
+      roundRect(0, p.botY, p.w, (h - G.groundH) - p.botY + 10, 16);
+      ctx.fill(); ctx.stroke();
+
+      // carved caps
+      ctx.fillStyle = "rgba(231,194,106,0.06)";
+      roundRect(-7, p.topH - 22, p.w + 14, 26, 16); ctx.fill();
+      roundRect(-7, p.botY, p.w + 14, 26, 16); ctx.fill();
+
+      // rune glow (subtle)
+      const t = (S.worldX*0.01 + p.runeSeed) % 999;
+      const glow = 0.10 + 0.08*Math.sin(t);
+      ctx.globalAlpha = glow;
+      ctx.strokeStyle = "rgba(231,194,106,0.9)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      // rune marks on top
+      ctx.beginPath();
+      for (let y=24; y<p.topH-26; y+=28){
+        const xx = 18 + (y%2)*6;
+        ctx.moveTo(xx, y);
+        ctx.lineTo(xx+14, y+10);
+        ctx.lineTo(xx-6, y+18);
+      }
+      ctx.stroke();
+      // rune marks on bottom
+      ctx.beginPath();
+      for (let y=p.botY+36; y<(h-G.groundH)-26; y+=28){
+        const xx = 18 + (y%2)*6;
+        ctx.moveTo(xx, y);
+        ctx.lineTo(xx+14, y+10);
+        ctx.lineTo(xx-6, y+18);
+      }
+      ctx.stroke();
+
+      // vines in non-volcanic realms
+      if (REALMS[S.realmIdx].id !== "emberrift"){
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = "rgba(134,208,201,0.75)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(p.w*0.78, p.topH - 8);
+        ctx.quadraticCurveTo(p.w*0.90, p.topH + 20, p.w*0.70, p.topH + 46);
+        ctx.quadraticCurveTo(p.w*0.55, p.topH + 68, p.w*0.72, p.topH + 90);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---- Heroes: fantasy silhouettes with ink + glow ----
+  function drawHero(now){
+    ctx.save();
+    ctx.translate(P.x, P.y);
+    ctx.rotate(P.rot);
+
+    // coin-medallion border (fantasy instead of sticker)
+    ctx.save();
+    ctx.translate(3, 4);
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.beginPath(); ctx.ellipse(0, 0, P.r*1.10, P.r*0.95, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // outer ring
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(231,194,106,0.85)";
+    ctx.fillStyle = "rgba(231,194,106,0.08)";
+    ctx.beginPath(); ctx.ellipse(0,0,P.r*1.10,P.r*0.95,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+
+    // inner ring
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(242,233,216,0.25)";
+    ctx.beginPath(); ctx.ellipse(0,0,P.r*0.92,P.r*0.78,0,0,Math.PI*2);
+    ctx.stroke();
+
+    // actual character art
+    selectedHero.draw(now);
+
+    // tiny spark glint
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = "rgba(242,233,216,0.85)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-P.r-6, -4); ctx.lineTo(-P.r-1, -8);
+    ctx.moveTo(-P.r-6, -4); ctx.lineTo(-P.r-1, 0);
+    ctx.stroke();
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHound(now){
+    const wob = Math.sin(now*0.015)*1.2;
+    ctx.save();
+
+    // body
+    ctx.fillStyle = "rgba(134,208,201,0.16)";
+    ctx.strokeStyle = "rgba(134,208,201,0.92)";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(-14, 2);
+    ctx.bezierCurveTo(-17, -8, -8, -16, 0, -10);
+    ctx.bezierCurveTo(10, -18, 20, -10, 14, 0);
+    ctx.bezierCurveTo(20, 10, 8, 18, -2, 12);
+    ctx.bezierCurveTo(-10, 18, -18, 12, -14, 2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // rune collar glow
+    ctx.globalAlpha = 0.35 + 0.10*Math.sin(now*0.02);
+    ctx.strokeStyle = "rgba(231,194,106,0.95)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(6, 6, 9, 6, 0.12, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(134,208,201,0.92)";
+    ctx.lineWidth = 3;
+
+    // ear
+    ctx.fillStyle = "rgba(242,233,216,0.06)";
+    ctx.beginPath();
+    ctx.moveTo(-6, -10);
+    ctx.quadraticCurveTo(-18, -10-wob, -12, 0);
+    ctx.quadraticCurveTo(-8, -2, -6, -10);
+    ctx.fill(); ctx.stroke();
+
+    // eyes + nose
+    ctx.fillStyle = "rgba(242,233,216,0.9)";
+    ctx.beginPath(); ctx.arc(-2, -2, 2.1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -2, 2.1, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = "rgba(10,10,14,0.95)";
+    ctx.beginPath(); ctx.arc(12, 4, 2.2, 0, Math.PI*2); ctx.fill();
+
+    // tail flourish
+    ctx.strokeStyle = "rgba(231,194,106,0.70)";
+    ctx.lineWidth = 3; ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(-14, 6);
+    ctx.quadraticCurveTo(-21, 0-wob, -14, -4);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawFamiliar(now){
+    const wob = Math.sin(now*0.013)*1.1;
+    ctx.save();
+
+    ctx.fillStyle = "rgba(231,194,106,0.16)";
+    ctx.strokeStyle = "rgba(231,194,106,0.95)";
+    ctx.lineWidth = 3;
+
+    // head
+    ctx.beginPath();
+    ctx.moveTo(-14, 2);
+    ctx.bezierCurveTo(-14, -10, -6, -18, 0, -10);
+    ctx.bezierCurveTo(6, -18, 14, -10, 14, 2);
+    ctx.bezierCurveTo(14, 16, 4, 16, 0, 10);
+    ctx.bezierCurveTo(-4, 16, -14, 16, -14, 2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // ears
+    ctx.fillStyle = "rgba(242,233,216,0.05)";
+    ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-13, -16); ctx.lineTo(-2, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8, -8); ctx.lineTo(13, -16); ctx.lineTo(2, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // cloak
+    ctx.strokeStyle = "rgba(134,208,201,0.75)";
+    ctx.fillStyle = "rgba(134,208,201,0.10)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, 10);
+    ctx.quadraticCurveTo(0, 22, 10, 10);
+    ctx.quadraticCurveTo(2, 12+wob, -10, 10);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // eyes
+    ctx.fillStyle = "rgba(242,233,216,0.9)";
+    ctx.beginPath(); ctx.ellipse(-4, -2, 2.6, 3.6, 0.1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(4, -2, 2.6, 3.6, -0.1, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "rgba(10,10,14,0.95)";
+    ctx.beginPath(); ctx.arc(-4, -2, 1.0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4, -2, 1.0, 0, Math.PI*2); ctx.fill();
+
+    // whisker runes
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = "rgba(242,233,216,0.6)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-1, 3); ctx.lineTo(-12, 1);
+    ctx.moveTo(-1, 5); ctx.lineTo(-12, 6);
+    ctx.moveTo(1, 3);  ctx.lineTo(12, 1);
+    ctx.moveTo(1, 5);  ctx.lineTo(12, 6);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // tail curl
+    ctx.strokeStyle = "rgba(134,208,201,0.7)";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(12, 10); ctx.quadraticCurveTo(22, 10-wob, 12, 2); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawSpiritDove(now){
+    const flap = Math.sin(now*0.022) * 0.7;
+    ctx.save();
+
+    // ethereal glow
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = "rgba(180,210,255,0.9)";
+    ctx.beginPath(); ctx.ellipse(0,0,22,16,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.strokeStyle = "rgba(180,210,255,0.92)";
+    ctx.lineWidth = 3;
+    ctx.fillStyle = "rgba(180,210,255,0.14)";
+
+    // body
+    ctx.beginPath();
+    ctx.moveTo(-12, 2);
+    ctx.bezierCurveTo(-8, -12, 10, -14, 14, -2);
+    ctx.bezierCurveTo(10, 6, 6, 14, -2, 10);
+    ctx.bezierCurveTo(-8, 14, -14, 10, -12, 2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // wing
+    ctx.fillStyle = "rgba(242,233,216,0.05)";
+    ctx.beginPath();
+    ctx.moveTo(-6, 1);
+    ctx.quadraticCurveTo(2, -10 - flap*6, 12, 2);
+    ctx.quadraticCurveTo(2, 10 + flap*6, -6, 1);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // head
+    ctx.fillStyle = "rgba(180,210,255,0.10)";
+    ctx.beginPath(); ctx.ellipse(6, -6, 6, 5, 0.1, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+    // eye + halo rune
+    ctx.fillStyle = "rgba(242,233,216,0.92)";
+    ctx.beginPath(); ctx.arc(8, -7, 1.8, 0, Math.PI*2); ctx.fill();
+
+    ctx.globalAlpha = 0.35 + 0.08*Math.sin(now*0.02);
+    ctx.strokeStyle = "rgba(231,194,106,0.95)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(2, -10, 7, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // beak
+    ctx.fillStyle = "rgba(231,194,106,0.22)";
+    ctx.beginPath(); ctx.moveTo(12, -6); ctx.lineTo(18, -4); ctx.lineTo(12, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // tail band
+    ctx.strokeStyle = "rgba(242,233,216,0.55)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(-12, 6); ctx.quadraticCurveTo(-2, 12, 10, 8); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawDragonRider(now){
+    // small drake + rider silhouette with ember accents
+    const beat = Math.sin(now*0.020);
+    ctx.save();
+
+    // ember glow depending on realm
+    const emberA = (REALMS[S.realmIdx].id === "emberrift") ? 0.28 : 0.14;
+    ctx.globalAlpha = emberA;
+    ctx.fillStyle = "rgba(255,140,120,0.9)";
+    ctx.beginPath(); ctx.ellipse(0,0,22,14,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // body
+    ctx.strokeStyle = "rgba(255,140,120,0.88)";
+    ctx.fillStyle = "rgba(255,140,120,0.10)";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(-14, 2);
+    ctx.bezierCurveTo(-10, -10, 4, -12, 10, -6);
+    ctx.bezierCurveTo(14, -3, 14, 9, 4, 10);
+    ctx.bezierCurveTo(-2, 12, -10, 10, -14, 2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // wing
+    ctx.fillStyle = "rgba(242,233,216,0.04)";
+    ctx.beginPath();
+    ctx.moveTo(-2, -2);
+    ctx.quadraticCurveTo(4, -14 - beat*6, 14, -6);
+    ctx.quadraticCurveTo(8, 0 + beat*3, -2, -2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // head + horn
+    ctx.fillStyle = "rgba(255,140,120,0.08)";
+    ctx.beginPath(); ctx.ellipse(10, -6, 7, 5, 0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(12, -12);
+    ctx.lineTo(16, -14);
+    ctx.lineTo(14, -9);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // eye
+    ctx.fillStyle = "rgba(242,233,216,0.92)";
+    ctx.beginPath(); ctx.arc(12, -7, 1.6, 0, Math.PI*2); ctx.fill();
+
+    // rider (tiny hood)
+    ctx.strokeStyle = "rgba(231,194,106,0.85)";
+    ctx.fillStyle = "rgba(231,194,106,0.10)";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.ellipse(1, -8, 6, 6, 0.1, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+
+    // tail flame
+    ctx.globalAlpha = 0.5 + 0.25*Math.sin(now*0.03);
+    ctx.strokeStyle = "rgba(231,194,106,0.95)";
+    ctx.lineWidth = 3;
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(-14, 6);
+    ctx.quadraticCurveTo(-22, 2, -16, -6);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
+  // ---- Foreground text / prompts ----
+  function drawUIHints(){
+    const w = getW(), h = getH();
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = "rgba(242,233,216,0.90)";
+    ctx.font = "900 16px system-ui, -apple-system, Segoe UI, Roboto";
+
+    let msg = "";
+    if (S.mode === "ready") msg = "Press Space (or click/tap) to begin • Hold to glide";
+    else if (S.mode === "pause") msg = "Paused (P to resume)";
+    else if (S.mode === "menu") msg = "Choose a champion and Start";
+    else if (S.mode === "over") msg = "Fate decides… Space/click/tap to restart";
+    if (msg) ctx.fillText(msg, 14, 28);
+
+    // subtle vignette
+    ctx.globalAlpha = 0.25;
+    const vg = ctx.createRadialGradient(w*0.5,h*0.55, Math.min(w,h)*0.25, w*0.5,h*0.55, Math.max(w,h)*0.75);
+    vg.addColorStop(0,"rgba(0,0,0,0)");
+    vg.addColorStop(1,"rgba(0,0,0,0.55)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0,0,w,h);
+
+    ctx.restore();
+  }
+
+  // ---- Start in menu ----
+  function showMenu(){
+    S.mode = "menu";
+    showOverlay("Choose your champion",
+      "Pick a hero, then <b>Start</b>. The realm won’t move until your first <b>Space / click / tap</b>.<br><br>Hold to <b>glide</b>.");
+    startBtn.textContent = "Start";
+  }
+  showMenu();
+
+  // Initial labels
+  setHero(selectedHero.id);
+  setRealm(0);
+
+  // ---- Main loop ----
+  function step(now){
+    resizeCanvasToDisplaySize();
+    const dt = clamp((now - (S.last || now)) / 1000, 0, 0.033);
+    S.last = now;
+
+    const w = getW(), h = getH();
+
+    // camera shake
+    const shake = Math.max(0, S.shake);
+    if (S.shake > 0) S.shake *= 0.86;
+
+    ctx.save();
+    if (shake > 0.2){
+      ctx.translate((Math.random()*2-1)*shake, (Math.random()*2-1)*shake);
+    }
+
+    // Background
+    drawBackground(now);
+
+    // READY: idle bob
+    if (S.mode === "ready"){
+      const bob = Math.sin(now*0.004)*0.7;
+      P.y = (h*0.45) + bob;
+      P.vy = 0;
+      P.rot = Math.sin(now*0.004)*0.06;
+    }
+
+    // PLAY
+    if (S.mode === "play"){
+      // world scroll
+      S.worldX += G.pillarSpeed * dt;
+
+      // spawn pillars
+      if (S.nextPillarAt && now >= S.nextPillarAt) spawnPillar(now);
+
+      // move pillars
+      for (const p of S.pillars) p.x -= G.pillarSpeed * dt;
+      S.pillars = S.pillars.filter(p => p.x + p.w > -90);
+
+      // scoring + realm shift
+      for (const p of S.pillars){
+        if (!p.passed && p.x + p.w < P.x){
+          p.passed = true;
+          S.score++;
+          scoreEl.textContent = String(S.score);
+          if (audio) audio.play(760, 0.05, "sine", 0.05);
+
+          if (S.score > 0 && S.score % REALM_SHIFT_EVERY === 0){
+            queueNextRealm();
+          }
+        }
+      }
+
+      // glide while holding (only when falling)
+      const phys = selectedHero.physics;
+      const gliding = input.holding && P.vy > 0;
+      const grav = phys.gravity * (gliding ? phys.glideGravityMul : 1.0);
+      const maxFall = phys.maxFall * (gliding ? phys.glideFallMul : 1.0);
+
+      P.vy += grav * dt;
+      P.vy = clamp(P.vy, -900, maxFall);
+      P.y += P.vy * dt;
+
+      // rotation
+      const targetRot = clamp(P.vy / 700, -0.55, 0.85);
+      P.rot += (targetRot - P.rot) * clamp(dt * 10, 0, 1);
+
+      // ceiling
+      if (P.y - P.r < 0){ P.y = P.r; P.vy = 0; }
+
+      // collision check
+      let hit = false;
+      if (P.y + P.r > h - G.groundH) hit = true;
+      if (!hit){
+        for (const p of S.pillars){
+          if (collideWithPillar(p)){ hit = true; break; }
+        }
+      }
+
+      if (hit){
+        if (P.alive){
+          P.alive = false;
+          P.coyoteUntil = now + G.coyoteMs;
+          S.shake = 6;
+          if (audio) audio.play(180, 0.08, "sawtooth", 0.05);
+        } else {
+          if (now >= P.coyoteUntil) endGame();
+        }
+      }
+    }
+
+    // Draw pillars + hero + UI prompt
+    drawPillars();
+    drawHero(now);
+    drawUIHints();
+
+    ctx.restore();
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+
+  // ---- Controls wiring (same as before) ----
+  function setHolding(v){ input.holding = v; }
+  function doFlap(now){
+    if (S.mode === "menu") return;
+    if (S.mode === "pause"){ S.mode = "play"; hideOverlay(); return; }
+    if (S.mode === "over"){ enterReady(); return; }
+    if (S.mode === "ready"){
+      beginPlayWithFlap(now);
+      return;
+    }
+    if (S.mode !== "play") return;
+
+    const canFlap = P.alive || now < P.coyoteUntil;
+    if (!canFlap) return;
+
+    P.alive = true;
+    P.vy = selectedHero.physics.flapVel;
+    if (audio) audio.play(520, 0.055, "triangle", 0.05);
+  }
+
+  function beginPlayWithFlap(now){
+    S.mode = "play";
+    S.nextPillarAt = now + 1100;
+    doFlap(now);
+  }
+
+  function enterReady(){
+    resetRun();
+    S.mode = "ready";
+    hideOverlay();
+    startBtn.textContent = "Restart";
+    if (audio) audio.play(540, 0.05, "sine", 0.04);
+  }
+
+  function togglePause(){
+    if (S.mode !== "play" && S.mode !== "pause") return;
+    if (S.mode === "play"){
+      S.mode = "pause";
+      showOverlay("Time is stilled", "Press <b>P</b> to return. Hold to <b>glide</b> when playing.");
+      startBtn.textContent = "Restart";
+    } else {
+      S.mode = "play";
+      hideOverlay();
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space"){
+      e.preventDefault();
+      setHolding(true);
+      if (!e.repeat) doFlap(performance.now());
+    }
+    if (e.key.toLowerCase() === "p") togglePause();
+    if (e.key.toLowerCase() === "r") enterReady();
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") setHolding(false);
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    setHolding(true);
+    doFlap(performance.now());
+  });
+  window.addEventListener("pointerup", () => setHolding(false));
+  window.addEventListener("pointercancel", () => setHolding(false));
+
+  // Buttons
+  startBtn.addEventListener("click", () => enterReady());
+  howBtn.addEventListener("click", () => {
+    showOverlay("How to play",
+      "Press <b>Start</b> to ready your hero. The realm won’t move until your first <b>Space/click/tap</b>.<br><br>" +
+      "• Tap/Space to hop<br>• <b>Hold</b> to glide (reduced fall)<br>• <b>P</b> pause, <b>R</b> restart<br><br>" +
+      `Realms shift every <b>${REALM_SHIFT_EVERY}</b> points.`
+    );
+    startBtn.textContent = (S.mode === "play" || S.mode === "ready") ? "Restart" : "Start";
+  });
+  muteBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    muteBtn.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
+    if (audio && soundOn) audio.play(680, 0.04, "sine", 0.03);
+  });
+
+})();
+</script>
+</body>
+</html>
