@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>Flappy Realms: High Fantasy</title>
   <style>
     :root{
@@ -55,7 +55,7 @@
     }
     .pill b{color:var(--ink);}
 
-    canvas{display:block; width:100%; aspect-ratio: 16/9; background: transparent; touch-action:none;}
+    canvas{display:block; width:100%; aspect-ratio: 16/9; background: transparent; touch-action:none; -webkit-tap-highlight-color:transparent;}
 
     .overlay{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;}
     .panel{
@@ -239,7 +239,7 @@
       o.start(); o.stop(ac.currentTime + dur);
       g.gain.setTargetAtTime(0.0001, ac.currentTime + dur*0.35, 0.02);
     };
-    return { play };
+    return { play, ctx: ac };
   })();
 
   // ---- Mechanics (unchanged feel) ----
@@ -538,6 +538,14 @@
     if (e.code === "Space") setHolding(false);
   });
 
+  // Unlock audio on first interaction (required on iOS and many mobile browsers)
+  function unlockAudio() {
+    if (audio && audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume().catch(()=>{});
+  }
+  document.body.addEventListener("touchstart", unlockAudio, { once: true, passive: true });
+  document.body.addEventListener("touchend", unlockAudio, { once: true, passive: true });
+  document.body.addEventListener("click", unlockAudio, { once: true, passive: true });
+
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     setHolding(true);
@@ -545,6 +553,17 @@
   });
   window.addEventListener("pointerup", () => setHolding(false));
   window.addEventListener("pointercancel", () => setHolding(false));
+
+  // Explicit touch handlers so tap/flap works reliably on all mobile browsers
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    setHolding(true);
+    doFlap(performance.now());
+  }, { passive: false });
+  window.addEventListener("touchend", (e) => {
+    setHolding(false);
+  }, { passive: true });
+  window.addEventListener("touchcancel", () => setHolding(false), { passive: true });
 
   // Buttons
   startBtn.addEventListener("click", () => { startBtn.textContent = "Restart"; enterReady(); });
@@ -1495,89 +1514,6 @@
     requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
-
-  // ---- Controls wiring (same as before) ----
-  function setHolding(v){ input.holding = v; }
-  function doFlap(now){
-    if (S.mode === "menu") return;
-    if (S.mode === "pause"){ S.mode = "play"; hideOverlay(); return; }
-    if (S.mode === "over"){ enterReady(); return; }
-    if (S.mode === "ready"){
-      beginPlayWithFlap(now);
-      return;
-    }
-    if (S.mode !== "play") return;
-
-    const canFlap = P.alive || now < P.coyoteUntil;
-    if (!canFlap) return;
-
-    P.alive = true;
-    P.vy = selectedHero.physics.flapVel;
-    if (audio) audio.play(520, 0.055, "triangle", 0.05);
-  }
-
-  function beginPlayWithFlap(now){
-    S.mode = "play";
-    S.nextPillarAt = now + 1100;
-    doFlap(now);
-  }
-
-  function enterReady(){
-    resetRun();
-    S.mode = "ready";
-    hideOverlay();
-    startBtn.textContent = "Restart";
-    if (audio) audio.play(540, 0.05, "sine", 0.04);
-  }
-
-  function togglePause(){
-    if (S.mode !== "play" && S.mode !== "pause") return;
-    if (S.mode === "play"){
-      S.mode = "pause";
-      showOverlay("Time is stilled", "Press <b>P</b> to return. Hold to <b>glide</b> when playing.");
-      startBtn.textContent = "Restart";
-    } else {
-      S.mode = "play";
-      hideOverlay();
-    }
-  }
-
-  window.addEventListener("keydown", (e) => {
-    if (e.code === "Space"){
-      e.preventDefault();
-      setHolding(true);
-      if (!e.repeat) doFlap(performance.now());
-    }
-    if (e.key.toLowerCase() === "p") togglePause();
-    if (e.key.toLowerCase() === "r") enterReady();
-  });
-  window.addEventListener("keyup", (e) => {
-    if (e.code === "Space") setHolding(false);
-  });
-
-  canvas.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    setHolding(true);
-    doFlap(performance.now());
-  });
-  window.addEventListener("pointerup", () => setHolding(false));
-  window.addEventListener("pointercancel", () => setHolding(false));
-
-  // Buttons
-  startBtn.addEventListener("click", () => enterReady());
-  howBtn.addEventListener("click", () => {
-    showOverlay("How to play",
-      "Press <b>Start</b> to ready your hero. The realm won’t move until your first <b>Space/click/tap</b>.<br><br>" +
-      "• Tap/Space to hop<br>• <b>Hold</b> to glide (reduced fall)<br>• <b>P</b> pause, <b>R</b> restart<br><br>" +
-      `Realms shift every <b>${REALM_SHIFT_EVERY}</b> points.`
-    );
-    startBtn.textContent = (S.mode === "play" || S.mode === "ready") ? "Restart" : "Start";
-  });
-  muteBtn.addEventListener("click", () => {
-    soundOn = !soundOn;
-    muteBtn.textContent = `Sound: ${soundOn ? "On" : "Off"}`;
-    if (audio && soundOn) audio.play(680, 0.04, "sine", 0.03);
-  });
 
 })();
 </script>
